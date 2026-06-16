@@ -1,0 +1,31 @@
+graph TD
+    subgraph eks[AWS EKS Cluster]
+        subgraph ns_default[Namespace: default]
+            Ingress[Ingress Controller]
+            OrdersAPI[Orders API]
+            PaymentsAPI[Payments API]
+        end
+
+        subgraph ns_obs[Namespace: observability]
+            OTelCollector[OpenTelemetry Collector]
+            Prometheus[(Prometheus)]
+            Jaeger[(Jaeger)]
+            Loki[(Loki)]
+            Grafana[Grafana Dashboard]
+        end
+    end
+
+    Client -->|HTTP/REST| Ingress
+    Ingress -->|Route /orders| OrdersAPI
+    OrdersAPI -->|gRPC/HTTP| PaymentsAPI
+
+    OrdersAPI -.->|OTLP Metrics/Traces| OTelCollector
+    PaymentsAPI -.->|OTLP Metrics/Traces| OTelCollector
+
+    OTelCollector -.->|Prometheus Exporter| Prometheus
+    OTelCollector -.->|Jaeger Exporter| Jaeger
+    OTelCollector -.->|Loki Exporter| Loki
+
+    Grafana -->|Query| Prometheus
+    Grafana -->|Query| Jaeger
+    Grafana -->|Query| Loki

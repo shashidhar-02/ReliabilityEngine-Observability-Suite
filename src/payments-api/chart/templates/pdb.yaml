@@ -1,0 +1,19 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "payments-api.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "payments-api.fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  {{- if hasKey .Values.podDisruptionBudget "minAvailable" }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- else if hasKey .Values.podDisruptionBudget "maxUnavailable" }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "payments-api.fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

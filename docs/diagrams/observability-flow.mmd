@@ -1,0 +1,27 @@
+flowchart LR
+    subgraph App Layer
+        O[Orders API]
+        P[Payments API]
+    end
+
+    subgraph OTel Pipeline
+        C[OTel Collector]
+        B1[Batch Processor]
+        M[Memory Limiter]
+    end
+
+    subgraph Backends
+        TSDB[(Prometheus)]
+        TR[(Jaeger)]
+        LG[(Loki)]
+    end
+
+    O -->|OTLP gRPC| C
+    P -->|OTLP gRPC| C
+
+    C --> M
+    M --> B1
+
+    B1 -->|Metrics| TSDB
+    B1 -->|Traces| TR
+    B1 -->|Logs| LG

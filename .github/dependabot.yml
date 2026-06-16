@@ -1,7 +1,5 @@
 version: 2
-
 updates:
-
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -12,75 +10,76 @@ updates:
       - dependencies
       - github-actions
 
-  # Terraform Root
+  # Terraform Root/Modules
   - package-ecosystem: "terraform"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
-    labels:
-      - dependencies
-      - terraform
-
-  # Terraform Dev
-  - package-ecosystem: "terraform"
-    directory: "/environments/dev"
-    schedule:
-      interval: "weekly"
     labels:
       - terraform
-      - dev
 
-  # Terraform Staging
+  # Terraform Prod Environment
   - package-ecosystem: "terraform"
-    directory: "/environments/staging"
-    schedule:
-      interval: "weekly"
-    labels:
-      - terraform
-      - staging
-
-  # Terraform Prod
-  - package-ecosystem: "terraform"
-    directory: "/environments/prod"
+    directory: "/terraform/env/prod"
     schedule:
       interval: "weekly"
     labels:
       - terraform
       - production
 
-  # Helm
+  # Terraform Staging Environment
+  - package-ecosystem: "terraform"
+    directory: "/terraform/env/staging"
+    schedule:
+      interval: "weekly"
+    labels:
+      - terraform
+      - staging
+
+  # Helm - Orders API
   - package-ecosystem: "helm"
-    directory: "/helm"
+    directory: "/src/orders-api/chart"
     schedule:
       interval: "weekly"
     labels:
       - helm
-      - kubernetes
 
-  # Docker
+  # Helm - Payments API
+  - package-ecosystem: "helm"
+    directory: "/src/payments-api/chart"
+    schedule:
+      interval: "weekly"
+    labels:
+      - helm
+
+  # Docker - Orders API
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/src/orders-api"
     schedule:
       interval: "weekly"
     labels:
       - docker
-      - security
 
-  # Frontend
-  - package-ecosystem: "npm"
-    directory: "/frontend"
+  # Docker - Payments API
+  - package-ecosystem: "docker"
+    directory: "/src/payments-api"
     schedule:
       interval: "weekly"
     labels:
-      - npm
-      - frontend
+      - docker
 
-  # Backend
-  - package-ecosystem: "npm"
-    directory: "/backend"
+  # Go - Orders API
+  - package-ecosystem: "gomod"
+    directory: "/src/orders-api"
     schedule:
       interval: "weekly"
     labels:
-      - npm
-      - backend
+      - go
+
+  # Python - Payments API
+  - package-ecosystem: "pip"
+    directory: "/src/payments-api"
+    schedule:
+      interval: "weekly"
+    labels:
+      - python

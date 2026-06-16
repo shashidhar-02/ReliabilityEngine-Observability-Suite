@@ -1,0 +1,46 @@
+name: Security Scanning (Nightly)
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run daily at 2 AM
+  workflow_dispatch:
+
+permissions:
+  security-events: write
+  contents: read
+
+jobs:
+  trivy-scan:
+    name: Trivy Vulnerability Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Image for Scanning (Orders API)
+        run: docker build -t orders-api:local ./src/orders-api
+
+      - name: Run Trivy vulnerability scanner (Orders API)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'orders-api:local'
+          format: 'sarif'
+          output: 'trivy-orders.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build Image for Scanning (Payments API)
+        run: docker build -t payments-api:local ./src/payments-api
+
+      - name: Run Trivy vulnerability scanner (Payments API)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'payments-api:local'
+          format: 'sarif'
+          output: 'trivy-payments.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-orders.sarif'
+        if: always()

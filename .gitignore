@@ -1,0 +1,27 @@
+# Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.tfstate.lock.info
+*.tfvars
+
+# Kubernetes
+kubeconfig*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.sarif
+
+# Applications
+src/orders-api/orders-api
+src/payments-api/__pycache__/
+src/payments-api/.pytest_cache/
+src/payments-api/venv/
+
+# Environment Variables
+.env
+.env.local

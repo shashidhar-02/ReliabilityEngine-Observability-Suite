@@ -1,0 +1,119 @@
+name: Application Deployment (Microservices)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'k8s-manifests/**'
+  pull_request:
+    paths:
+      - 'src/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test Go (Orders API)
+        run: |
+          cd src/orders-api
+          go test ./...
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test Python (Payments API)
+        run: |
+          cd src/payments-api
+          pip install -r requirements.txt
+          pytest
+
+  build-and-push-images:
+    name: Build and Push Docker Images
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-ecr-role
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR (Orders API)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: orders-api
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd src/orders-api
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Build, tag, and push image to Amazon ECR (Payments API)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: payments-api
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd src/payments-api
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+  deploy:
+    name: Deploy to EKS (Helm & Kustomize)
+    needs: build-and-push-images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-eks-role
+          aws-region: ap-south-1
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --name enterprise-sre-cluster-prod --region ap-south-1
+
+      - name: Deploy Base Manifests via Kustomize
+        run: kubectl apply -k k8s-manifests/overlays/prod
+
+      - name: Helm Upgrade (Orders API)
+        run: |
+          helm upgrade --install orders-api ./src/orders-api/chart \
+            --namespace default \
+            -f ./src/orders-api/chart/values-prod.yaml \
+            --set image.tag=${{ github.sha }} \
+            --atomic --wait --timeout 5m
+
+      - name: Helm Upgrade (Payments API)
+        run: |
+          helm upgrade --install payments-api ./src/payments-api/chart \
+            --namespace default \
+            -f ./src/payments-api/chart/values-prod.yaml \
+            --set image.tag=${{ github.sha }} \
+            --atomic --wait --timeout 5m

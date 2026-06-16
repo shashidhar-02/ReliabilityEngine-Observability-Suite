@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Dev as Developer
+    participant GitHub as GitHub Repository
+    participant GHA as GitHub Actions
+    participant ECR as AWS ECR
+    participant EKS as AWS EKS
+
+    Dev->>GitHub: Push commit to main
+    GitHub->>GHA: Trigger CI/CD Pipeline
+    
+    rect rgb(240, 248, 255)
+        Note over GHA: Continuous Integration
+        GHA->>GHA: Run Linters (Flake8, GoVet)
+        GHA->>GHA: Run Trivy Security Scan
+        GHA->>GHA: Build Docker Images
+        GHA->>ECR: Push Immutable Images (sha256)
+    end
+    
+    rect rgb(240, 255, 240)
+        Note over GHA: Continuous Deployment
+        GHA->>EKS: Apply Kustomize (Platform Base)
+        GHA->>EKS: Helm Upgrade Orders API
+        GHA->>EKS: Helm Upgrade Payments API
+        GHA->>GHA: Verify Deployment Rollout Status
+    end
+    
+    GHA-->>Dev: Pipeline Success/Failure Notification

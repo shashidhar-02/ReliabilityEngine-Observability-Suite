@@ -1,0 +1,15 @@
+# Global default fallback
+*                   @devops-leads
+
+# Infrastructure and platform ownership
+/terraform/         @sre-team @cloud-architects
+/k8s-manifests/     @sre-team @platform-engineering
+/.github/workflows/ @sre-team @secops
+
+# Application ownership
+/src/orders-api/    @backend-team-go
+/src/payments-api/  @backend-team-python
+
+# Documentation and Compliance
+/docs/              @sre-team @product-managers
+/LICENSE            @legal
