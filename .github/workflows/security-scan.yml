@@ -21,7 +21,7 @@ jobs:
         run: docker build -t orders-api:local ./src/orders-api
 
       - name: Run Trivy vulnerability scanner (Orders API)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'orders-api:local'
           format: 'sarif'
@@ -32,7 +32,7 @@ jobs:
         run: docker build -t payments-api:local ./src/payments-api
 
       - name: Run Trivy vulnerability scanner (Payments API)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'payments-api:local'
           format: 'sarif'
