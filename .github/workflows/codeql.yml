@@ -77,6 +77,12 @@ jobs:
     # to build your code.
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    - name: Setup Go
+      if: matrix.language == 'go'
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.26'
+
     - name: Run manual build steps
       if: matrix.build-mode == 'manual'
       shell: bash
