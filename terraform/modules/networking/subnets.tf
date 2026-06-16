@@ -32,7 +32,7 @@ resource "aws_subnet" "private" {
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
-  tags = merge(var.tags, { "Name" = "${var.environment}-igw" })
+  tags   = merge(var.tags, { "Name" = "${var.environment}-igw" })
 }
 
 # NAT Gateway for Private Subnets (High Availability: 1 per AZ)
@@ -47,7 +47,7 @@ resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
 
-  tags = merge(var.tags, { "Name" = "${var.environment}-nat-gw-${count.index + 1}" })
+  tags       = merge(var.tags, { "Name" = "${var.environment}-nat-gw-${count.index + 1}" })
   depends_on = [aws_internet_gateway.igw]
 }
 
