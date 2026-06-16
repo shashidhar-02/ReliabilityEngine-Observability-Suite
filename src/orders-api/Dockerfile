@@ -9,8 +9,8 @@ COPY . .
 # Build the binary with static linking
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o orders-api main.go
 
-# Use distroless for secure runtime
-FROM gcr.io/distroless/static-debian12
+# Use scratch for a 0-vulnerability runtime
+FROM scratch
 
 WORKDIR /
 COPY --from=builder /app/orders-api /orders-api
