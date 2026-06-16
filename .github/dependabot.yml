@@ -1,0 +1,140 @@
+version: 2
+
+updates:
+
+# ==========================================================
+
+# GitHub Actions
+
+# ==========================================================
+
+* package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+  interval: "weekly"
+  open-pull-requests-limit: 10
+  labels:
+
+  * dependencies
+  * github-actions
+
+# ==========================================================
+
+# Terraform - Root
+
+# ==========================================================
+
+* package-ecosystem: "terraform"
+  directory: "/"
+  schedule:
+  interval: "weekly"
+  open-pull-requests-limit: 10
+  labels:
+
+  * dependencies
+  * terraform
+
+# ==========================================================
+
+# Terraform - Dev Environment
+
+# ==========================================================
+
+* package-ecosystem: "terraform"
+  directory: "/environments/dev"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * terraform
+  * dev
+
+# ==========================================================
+
+# Terraform - Staging Environment
+
+# ==========================================================
+
+* package-ecosystem: "terraform"
+  directory: "/environments/staging"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * terraform
+  * staging
+
+# ==========================================================
+
+# Terraform - Production Environment
+
+# ==========================================================
+
+* package-ecosystem: "terraform"
+  directory: "/environments/prod"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * terraform
+  * production
+
+# ==========================================================
+
+# Helm Charts
+
+# ==========================================================
+
+* package-ecosystem: "helm"
+  directory: "/helm"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * helm
+  * kubernetes
+
+# ==========================================================
+
+# Docker Images
+
+# ==========================================================
+
+* package-ecosystem: "docker"
+  directory: "/"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * docker
+  * security
+
+# ==========================================================
+
+# Frontend Application
+
+# ==========================================================
+
+* package-ecosystem: "npm"
+  directory: "/frontend"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * npm
+  * frontend
+
+# ==========================================================
+
+# Backend Application
+
+# ==========================================================
+
+* package-ecosystem: "npm"
+  directory: "/backend"
+  schedule:
+  interval: "weekly"
+  labels:
+
+  * npm
+  * backend
