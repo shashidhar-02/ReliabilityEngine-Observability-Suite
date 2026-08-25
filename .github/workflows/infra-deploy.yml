@@ -41,7 +41,7 @@ jobs:
           tflint
 
       - name: Checkov IaC Scan
-        uses: bridgecrewio/checkov-action@v12.3117.0
+        uses: bridgecrewio/checkov-action@v12.3119.0
         with:
           directory: terraform/
           framework: terraform
