@@ -83,3 +83,7 @@ updates:
       interval: "weekly"
     labels:
       - python
+    groups:
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"

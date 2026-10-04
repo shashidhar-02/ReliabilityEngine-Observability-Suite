@@ -5,6 +5,7 @@ Welcome to the Enterprise SRE & Observability Platform documentation. This direc
 ## Table of Contents
 
 ### 1. System Architecture
+- **[Deployment](deployment.md):** AWS/GitHub bootstrap, private runner, rollout, and rollback requirements.
 - **[System Design](system-design.md):** Comprehensive architecture and data flow diagrams showing how EKS, OpenTelemetry, and the observability backends interact.
 - **[Architecture Decision Records (ADRs)](ADRs/):** Historical decisions outlining why specific technologies were chosen (e.g., [ADR-001: Why OpenTelemetry](ADRs/ADR-001-why-otel.md)).
 

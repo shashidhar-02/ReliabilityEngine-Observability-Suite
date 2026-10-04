@@ -1,91 +1,56 @@
-name: Infrastructure Deployment (Terraform)
+name: Infrastructure Deployment
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'terraform/**'
-  pull_request:
-    paths:
-      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: Target environment
+        options: [staging, prod]
+        required: true
+      apply:
+        type: boolean
+        description: Apply the reviewed plan
+        default: false
 
 permissions:
-  id-token: write
   contents: read
 
+concurrency:
+  group: infrastructure-${{ inputs.environment }}
+  cancel-in-progress: false
+
 jobs:
-  validate-and-scan:
-    name: Validate and Scan IaC
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/quality.yml
+
+  plan-and-apply:
+    needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.environment == 'prod' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
-          terraform_version: "1.7.0"
-
-      - name: Terraform Format
-        run: terraform fmt -check -recursive terraform/
-
-      - name: Install tflint
-        run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
-      - name: Run tflint
-        run: |
-          cd terraform/env/prod
-          tflint --init
-          tflint
-
-      - name: Checkov IaC Scan
-        uses: bridgecrewio/checkov-action@v12.3125.0
-        with:
-          directory: terraform/
-          framework: terraform
-          soft_fail: true
-
-  plan:
-    name: Terraform Plan
-    needs: validate-and-scan
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+          terraform_version: '1.13.4'
+      - uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74 # v6
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-tf-role
           aws-region: ap-south-1
-
-      - name: Terraform Init (Prod)
-        run: terraform -chdir=terraform/env/prod init
-
-      - name: Terraform Plan (Prod)
-        run: terraform -chdir=terraform/env/prod plan -no-color
-
-  apply:
-    name: Terraform Apply
-    needs: validate-and-scan
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-tf-role
-          aws-region: ap-south-1
-
-      - name: Terraform Init (Prod)
-        run: terraform -chdir=terraform/env/prod init
-
-      - name: Terraform Apply (Prod)
-        run: terraform -chdir=terraform/env/prod apply -auto-approve
+      - name: Initialize, validate, and plan
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+        run: |
+          terraform -chdir="terraform/env/$TARGET_ENV" init -input=false
+          terraform -chdir="terraform/env/$TARGET_ENV" validate
+          terraform -chdir="terraform/env/$TARGET_ENV" plan -input=false -out=deployment.tfplan
+      - name: Apply the exact plan
+        if: inputs.apply
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+        run: terraform -chdir="terraform/env/$TARGET_ENV" apply -input=false deployment.tfplan

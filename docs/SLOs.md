@@ -1,25 +1,36 @@
-# Service Level Objectives (SLOs)
+# Service level objectives
 
-## Overview
-This document defines the reliability targets and error budget burn policies for the Enterprise SRE Platform.
+These are proposed objectives and usable PromQL examples. The repository does not install recording rules, Alertmanager, paging, or a deployment freeze.
 
-## 1. Orders API
+## Orders availability
 
-**SLI (Service Level Indicator):** Availability (Success Rate)
-- **Metric:** `count(http_status=2xx/3xx) / total(http_requests)` over 30 days
-- **SLO Target:** 99.9%
-- **Monthly Error Budget:** 43.2 Minutes
+Target: 99.9% successful checkout requests over 30 days. Exclude health/metrics requests; use business-request counters. Availability is request-based, so its budget is 0.1% of requests, not automatically a downtime duration.
 
-## 2. Payments API
+```promql
+sum(increase(orders_http_requests_total{code=~"2..|3.."}[30d]))
+/
+sum(increase(orders_http_requests_total[30d]))
+```
 
-**SLI (Service Level Indicator):** Latency
-- **Metric:** P95 Latency of incoming API requests over rolling 5-minute windows
-- **SLO Target:** < 200ms
-- **Monthly Error Budget:** 5% of total requests exceeding 200ms
+For time-based 99.9% availability, the equivalent 30-day budget is 43.2 minutes, but a separate time-based SLI is needed.
 
-## Error Budget Burn Policy
+## Payments latency
 
-1. **Burn Rate > 1x:** Routine monitoring, added to sprint backlog.
-2. **Burn Rate > 2x:** Non-urgent ticket generated in Jira.
-3. **Burn Rate > 14.4x (5% consumed in 1 hr):** Critical PagerDuty alert triggered.
-4. **Budget Depletion (100%):** Feature freeze. All velocity shifts to reliability.
+Target: at least 95% of payment requests complete within 200 ms over 30 days. The histogram includes an explicit 0.2-second bucket:
+
+```promql
+sum(increase(payments_http_request_duration_seconds_bucket{path="/process-payment",le="0.2"}[30d]))
+/
+sum(increase(payments_http_request_duration_seconds_count{path="/process-payment"}[30d]))
+```
+
+Use P95 over five minutes for triage, not as a substitute for the 30-day budget:
+
+```promql
+histogram_quantile(0.95,
+  sum by (le) (rate(payments_http_request_duration_seconds_bucket{path="/process-payment"}[5m])))
+```
+
+## Burn policy
+
+Burn rate is observed bad-request fraction divided by the SLO's allowed bad fraction. A 14.4x burn over one hour consumes 2% of a 30-day budget, not 5%. Pair long and short windows to reduce false positives. Decide ticket/paging routes, no-traffic handling, and deployment policy before enabling enforcement.
