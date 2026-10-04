@@ -61,7 +61,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-eks-role
           aws-region: ap-south-1
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: v3.17.0
       - uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
