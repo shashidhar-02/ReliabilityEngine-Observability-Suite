@@ -1,5 +1,7 @@
 # Production specific overrides
 replicaCount: 3
+autoscaling:
+  minReplicas: 3
 
 resources:
   requests:

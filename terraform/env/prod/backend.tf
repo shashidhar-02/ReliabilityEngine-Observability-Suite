@@ -25,7 +25,7 @@ module "networking" {
 module "eks" {
   source                    = "../../modules/eks"
   cluster_name              = "enterprise-sre-cluster-prod"
-  cluster_version           = "1.28"
+  cluster_version           = "1.35"
   subnet_ids                = concat(module.networking.public_subnets, module.networking.private_subnets)
   private_subnet_ids        = module.networking.private_subnets
   cluster_security_group_id = module.networking.cluster_sg_id

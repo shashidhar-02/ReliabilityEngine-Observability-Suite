@@ -5,3 +5,4 @@ resources:
   - namespace.yaml
   - network-policy.yaml
   - rbac.yaml
+  - otel-collector.yaml

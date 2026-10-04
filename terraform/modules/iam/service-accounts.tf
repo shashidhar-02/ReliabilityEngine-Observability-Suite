@@ -22,7 +22,7 @@ variable "service_account_name" {
 
 # Example IAM Role for OpenTelemetry Collector to write to CloudWatch/X-Ray (if needed)
 resource "aws_iam_role" "otel_collector" {
-  name = "eks-otel-collector-role"
+  name = "${var.service_account_name}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -35,6 +35,7 @@ resource "aws_iam_role" "otel_collector" {
       Condition = {
         StringEquals = {
           "${replace(var.oidc_provider_url, "https://", "")}:sub" = "system:serviceaccount:${var.namespace}:${var.service_account_name}"
+          "${replace(var.oidc_provider_url, "https://", "")}:aud" = "sts.amazonaws.com"
         }
       }
     }]
@@ -42,7 +43,7 @@ resource "aws_iam_role" "otel_collector" {
 }
 
 resource "aws_iam_policy" "otel_collector_policy" {
-  name        = "eks-otel-collector-policy"
+  name        = "${var.service_account_name}-policy"
   description = "Policy for OpenTelemetry Collector"
 
   policy = jsonencode({

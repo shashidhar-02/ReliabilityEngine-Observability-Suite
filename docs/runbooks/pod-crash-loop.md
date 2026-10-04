@@ -12,7 +12,7 @@ flowchart TD
     B -->|Reason: Liveness Probe Failed| D[Application Deadlock / Slow Start]
     B -->|Reason: Error / Exit Code > 0| E[Application Crash]
 
-    C --> C1[Increase Memory Limit in patch-resources.yaml]
+    C --> C1[Review Memory Limit in chart values-prod.yaml]
     C --> C2[Analyze Heap Dump for Memory Leaks]
     
     D --> D1[Add or configure a startupProbe]
@@ -41,9 +41,10 @@ flowchart TD
    kubectl logs <pod-name> --previous -n default
    ```
 4. **Mitigation Strategies:**
-   - **OOMKilled:** Increase the `resources.limits.memory` in the `k8s-manifests/overlays/prod/patch-resources.yaml`. Check for memory leaks if this occurs frequently.
+   - **OOMKilled:** Review `resources.limits.memory` in the affected service's `chart/values-prod.yaml`. Check for memory leaks before increasing the limit.
    - **Application Error (e.g., config panic):** Roll back the deployment to the last known good configuration using Helm:
      ```bash
-     helm rollback payments-api 0
+     helm history payments-api
+     helm rollback payments-api <known-good-revision> --wait
      ```
    - **Probe Failures:** If the app takes too long to initialize (e.g., warming caches), add or configure a `startupProbe` in `values.yaml` rather than increasing `initialDelaySeconds` on the `livenessProbe`.

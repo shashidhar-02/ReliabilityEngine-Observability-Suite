@@ -37,8 +37,8 @@ stateDiagram-v2
    - Filter for traces in the `payments-api` service where `Duration > 200ms`.
    - Inspect the span dependency graph to identify the exact bottleneck (e.g., a slow `SELECT` query or a timed-out external API call).
 4. **Resource Verification (Prometheus):** 
-   - Check the `kube-state-metrics` dashboards to see if the pods are being CPU-throttled (`container_cpu_cfs_throttled_seconds_total`).
+    - Check kubelet/cAdvisor metrics for CPU throttling (`container_cpu_cfs_throttled_seconds_total`). kube-state-metrics does not provide container CPU throttling counters.
 5. **Mitigation Strategies:**
-   - **If CPU throttled:** Temporarily increase the CPU limit in `patch-resources.yaml` and rollout the deployment, or trigger the HPA manually.
+   - **If CPU throttled:** Review `src/payments-api/chart/values-prod.yaml` and the HPA resource metrics API before changing limits through a reviewed release.
    - **If DB bound:** Check Postgres/MySQL dashboards for connection pool exhaustion or deadlocks.
    - **If Upstream API bound:** Ensure circuit breakers are functioning properly to fail-fast rather than hanging.

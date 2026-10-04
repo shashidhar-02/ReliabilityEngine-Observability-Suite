@@ -1,0 +1,129 @@
+name: Repository Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go tests and static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/orders-api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: src/orders-api/go.mod
+          cache-dependency-path: src/orders-api/go.sum
+      - run: test -z "$(gofmt -l .)"
+      - run: go test -race -cover ./...
+      - run: go vet ./...
+      - run: go mod verify
+
+  python:
+    name: Python tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/payments-api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: 'src/payments-api/requirements*.lock'
+      - run: |
+          python -m pip install --only-binary=:all: --require-hashes -r requirements-dev.lock
+      - run: python -m pip check
+      - run: python -m pytest
+      - run: flake8 .
+
+  terraform:
+    name: Terraform validation (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        environment: [prod, staging]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        with:
+          terraform_version: '1.13.4'
+      - run: terraform fmt -check -recursive terraform/
+      - run: terraform -chdir=terraform/env/${{ matrix.environment }} init -backend=false -input=false
+      - run: terraform -chdir=terraform/env/${{ matrix.environment }} validate
+
+  manifests:
+    name: Kubernetes and Helm validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v3.17.0
+      - uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+        with:
+          version: v1.35.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26'
+          cache: false
+      - name: Build locked validation tools
+        working-directory: tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          go build -mod=readonly -o "$RUNNER_TEMP/bin/kubeconform" github.com/yannh/kubeconform/cmd/kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: |
+          helm lint src/orders-api/chart src/payments-api/chart
+          helm template orders-api src/orders-api/chart -f src/orders-api/chart/values-prod.yaml | kubeconform -strict -summary -kubernetes-version 1.35.0
+          helm template payments-api src/payments-api/chart -f src/payments-api/chart/values-prod.yaml | kubeconform -strict -summary -kubernetes-version 1.35.0
+          kubectl kustomize k8s-manifests/overlays/prod | kubeconform -strict -summary -kubernetes-version 1.35.0
+
+  containers:
+    name: Container builds (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [orders-api, payments-api]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: docker build -t ${{ matrix.app }}:ci ./src/${{ matrix.app }}
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: '${{ matrix.app }}:ci'
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+  workflows:
+    name: GitHub Actions validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26'
+          cache: false
+      - name: Build locked workflow validator
+        working-directory: tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          go build -mod=readonly -o "$RUNNER_TEMP/bin/actionlint" github.com/rhysd/actionlint/cmd/actionlint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: actionlint

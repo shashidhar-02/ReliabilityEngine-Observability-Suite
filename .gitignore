@@ -21,6 +21,14 @@ src/orders-api/orders-api
 src/payments-api/__pycache__/
 src/payments-api/.pytest_cache/
 src/payments-api/venv/
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+/helm
+*.test
+coverage.out
+*.tfplan
 
 # Environment Variables
 .env

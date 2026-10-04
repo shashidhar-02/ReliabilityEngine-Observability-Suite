@@ -1,182 +1,103 @@
-# Enterprise SRE & Multi-Pillar Observability Platform
+# ReliabilityEngine Observability Suite
 
-A production-ready, enterprise-grade Site Reliability Engineering (SRE) and Observability platform deployed on AWS Elastic Kubernetes Service (EKS). This platform transitions operations from traditional reactive monitoring to proactive reliability engineering by implementing vendor-agnostic data collection via **OpenTelemetry (OTel)**, automated SLI/SLO tracking, and GitOps-driven infrastructure lifecycle management.
+[![Quality](https://github.com/shashidhar-02/ReliabilityEngine-Observability-Suite/actions/workflows/quality.yml/badge.svg)](https://github.com/shashidhar-02/ReliabilityEngine-Observability-Suite/actions/workflows/quality.yml)
+[![Security](https://github.com/shashidhar-02/ReliabilityEngine-Observability-Suite/actions/workflows/security-scan.yml/badge.svg)](https://github.com/shashidhar-02/ReliabilityEngine-Observability-Suite/actions/workflows/security-scan.yml)
 
----
+A reference SRE platform for learning and validating reliability engineering on AWS EKS. Orders (Go) calls Payments (FastAPI), propagates W3C trace context, exposes Prometheus metrics, and exports traces through OpenTelemetry.
 
-## 🏗️ System Architecture & Data Flow
+## What is implemented
 
-The platform centralizes infrastructure, container, and application lifecycle data through an OpenTelemetry unified collection pipeline, routing metrics, logs, and traces to decoupled storage backends.
+- An actual HTTP Orders → Payments request path with bounded downstream timeouts.
+- `/health` and `/metrics` endpoints on both services; checkout and payment request counters and latency histograms.
+- Non-blocking trace export and graceful shutdown; fault injection is opt-in.
+- Helm deployments with non-root execution, read-only filesystems, probes, resource limits, real service accounts, HPAs, and disruption budgets.
+- An OTLP collector with memory limiting, batching, health checks, and two replicas.
+- Terraform networking, private EKS, IAM/IRSA, encrypted state configuration, flow logs, and immutable production ECR repositories.
+- PR validation, CodeQL, image vulnerability gates, SHA-pinned Actions, grouped OpenTelemetry dependency updates, and explicit cloud deployment workflows.
+
+The collector currently exports to its logs using the `debug` exporter. Durable trace storage, Prometheus/Grafana/Loki installations, paging integrations, dashboards, and deployment freezes remain integration work. This is a production-oriented **reference platform**, not a claim that those systems or a live AWS deployment have already been verified.
 
 ```mermaid
-graph TD
-    subgraph Applications_Cluster [AWS EKS Cluster]
-        AppA[Orders API - Go] -->|OTLP Traces/Metrics/Logs| OTelCol[OpenTelemetry Collector]
-        AppB[Payments API - Python] -->|OTLP Traces/Metrics/Logs| OTelCol
-        KubeMetrics[kube-state-metrics] -->|Scrape| Prometheus
-        NodeExp[Node Exporter] -->|Metrics| Prometheus
-    end
-
-    subgraph Storage_Layer [Observability Core]
-        OTelCol -->|Metrics Exporter| Prometheus[(Prometheus TSDB)]
-        OTelCol -->|Logs Exporter| Loki[(Grafana Loki)]
-        OTelCol -->|Traces Exporter| Jaeger[(Jaeger Tracing)]
-    end
-
-    subgraph Visualization_Alerting [Control Plane]
-        Grafana[Grafana Dashboards] -->|Query| Prometheus
-        Grafana -->|Query| Loki
-        Grafana -->|Query| Jaeger
-        Prometheus -->|Alert Rules| Alertmanager[Alertmanager]
-        Alertmanager -->|Routing| Slack[Slack / Email Channels]
-    end
+flowchart LR
+  Orders[Orders API :8080] -->|HTTP + W3C trace context| Payments[Payments API :8000]
+  Orders -->|OTLP| Collector[OTel Collector :4317]
+  Payments -->|OTLP| Collector
+  Collector --> Debug[Debug exporter]
+  Prometheus[Platform Prometheus] -->|GET /metrics| Orders
+  Prometheus -->|GET /metrics| Payments
 ```
 
----
+## Repository layout
 
-## 🛠️ Core Engineering Features
+| Path | Purpose |
+| --- | --- |
+| `src/orders-api/` | Go source, tests, container, and Helm chart |
+| `src/payments-api/` | Python source, tests, dependencies, container, and Helm chart |
+| `k8s-manifests/` | Namespaces, RBAC, network policy, and collector |
+| `terraform/env/{prod,staging}/` | Independently validated infrastructure environments |
+| `terraform/modules/` | EKS, networking, and IRSA modules |
+| `.github/` | Actions, Dependabot, issue templates, PR template |
+| `docs/` | Deployment guide, SLOs, ADRs, runbooks |
 
-### 1. Infrastructure & Kubernetes Capacity Monitoring
+## Local quick start
 
-* **Node Observability:** Tracking Node CPU Utilization, Memory Saturation, Disk IOPS/Throughput, Network Packets/Errors, and Filesystem consumption via `Node Exporter`.
-* **Cluster Orchestration Health:** Continuous monitoring of Pod states (`CrashLoopBackOff`, `ImagePullBackOff`), Deployment rollout health, ReplicaSet capacities, and namespace-isolated consumption limits using `kube-state-metrics`.
+Required: Go 1.26, Python 3.11, and optionally Docker, Terraform 1.13.4, Helm 3.17, kubectl, and make for platform checks.
 
-### 2. Microservice Application Performance (APM)
-
-* **The Four Golden Signals:** Standardized dashboards exposing Latency, Traffic (RPS), Errors (Rate of 5xx responses), and Saturation.
-* **Database Connectivity Health:** Out-of-the-box performance tracing for transactional query timings and connection pool exhaustion metrics.
-
-### 3. Centralized Logging Architecture
-
-* **Structured Stream Ingestion:** High-performance container log scraping using Promtail, formatting application outputs into structured JSON strings for indexed key-value parsing.
-* **Audit Trail Compliance:** Aggregation of Kubernetes control plane audit logs for operational tracking and security compliance.
-
-### 4. End-to-End Distributed Tracing
-
-* **Context Propagation:** W3C Trace Context passing across HTTP/gRPC boundaries between separated services (`orders-api` to `payments-api`).
-* **Root-Cause Isolation:** Visual microservice dependency graph generation to identify upstream bottlenecks and transaction blockages within Jaeger UI.
-
-### 5. Synthetic Monitoring & Proactive Guardrails
-
-* **Edge Probing:** Blackbox Exporter configuration monitoring public/private endpoints for DNS resolution times, SSL Certificate expiration warnings, and HTTP status verification.
-
----
-
-## 📂 Deep-Dive Repository Blueprint
-
-```text
-.
-├── .github/workflows/
-│   ├── infra-deploy.yml     # Automated linting, validation, planning, and deployment of AWS resources
-│   ├── apps-deploy.yml      # Automated linting, testing, and GitOps Helm release management for microservices
-│   └── security-scan.yml    # Static security analysis (Checkov) for IaC and vulnerability scanning (Trivy) for images
-├── terraform/
-│   ├── modules/
-│   │   ├── eks/             # Custom module for cluster control plane, managed node groups, and encryption keys
-│   │   ├── networking/      # Custom module isolation for multi-AZ VPC, private/public subnets, and NAT Gateways
-│   │   └── iam/             # Service Accounts configurations mapping AWS IAM Policies to K8s Pods (IRSA)
-│   └── env/
-│       ├── prod/            # Production state orchestration configuration files and variables values
-│       └── staging/         # Isolated pre-production environment mimicking production with reduced footprints
-├── k8s-manifests/
-│   ├── base/                # Core platform manifests (Namespaces, Least-Privilege RBAC, NetworkPolicies)
-│   └── overlays/prod/       # Kustomize patches modifying resource requests, limits, and high-availability replicas
-├── src/
-│   ├── orders-api/          # Go-based order orchestration microservice instrumented with core OpenTelemetry SDK
-│   └── payments-api/        # Python-based transaction processing engine exporting context-propagated spans
-├── docs/
-│   ├── ADRs/                # Architecture Decision Records capturing the context and consequences of platform choices
-│   ├── runbooks/            # Concrete step-by-step operational triage playbooks for critical system failures
-│   └── SLOs.md              # Formalized definitions of Reliability Targets and Error Budget burn policies
-├── .gitignore               # Strict masking for provider binaries, lock files, local states, and sensitive secrets
-├── Makefile                 # Unified development command framework standardizing build and setup processes
-├── CODEOWNERS               # Branch protection assignment mapping code review governance to functional teams
-└── LICENSE                  # Open-source distribution compliance guidelines (Apache 2.0)
-```
-
----
-
-## 📈 SRE Governance: SLIs, SLOs & Error Budgets
-
-Our reliability target enforces a strict Service Level Objective (SLO) policy derived from explicit Service Level Indicators (SLIs).
-
-### Reliability Metrics Matrix
-
-| Target Component | Service Level Indicator (SLI) | SLO Target | Monthly Error Budget |
-| --- | --- | --- | --- |
-| **Orders API** | `count(http_status=2xx/3xx) / total(http_requests)` over 30 days | **99.9%** | **43.2 Minutes** Allowable Downtime |
-| **Payments API** | `P95 Latency of incoming API requests` over rolling 5-minute windows | **< 200ms** | **5% Threshold** Deviation Allowance |
-
-### Error Budget Burn Policy
-
-1. **Burn Rate > 1x:** Routine operational monitoring. No code freeze.
-2. **Burn Rate > 2x:** Alertmanager routes a non-urgent ticket to the engineering team's queue.
-3. **Burn Rate > 14.4x (5% budget consumed in 1 hour):** Critical alert triggers automated paging systems via communications channels.
-4. **Budget Depletion (100% consumed):** Automated deployment freeze enforced. All engineering velocity shifts from feature iteration to systemic platform stabilization.
-
----
-
-## 🚀 Phase-by-Phase Deployment Roadmap
-
-### Phase 1: Cloud Foundation Execution
-
-Provision the multi-AZ private network isolation and the core compute engine.
+From the repository root:
 
 ```bash
-# Initialize external providers and configure backend environment configurations
-make init
-
-# Execute architectural verification plan to ensure secure structure layout
-make plan
-
-# Apply infrastructure blueprint configurations directly to target Cloud Account
-make apply
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install --only-binary=:all: --require-hashes -r src/payments-api/requirements-dev.lock
+make test PYTHON=python
+make lint PYTHON=python
 ```
 
-### Phase 2: Kubernetes Platform Bootstrapping
-
-Configure authorization contexts and deploy the base platform manifests using Kustomize.
+Run Payments in one terminal and Orders in another:
 
 ```bash
-# Extract secure cluster context directly into local environment control configurations
-aws eks update-kubeconfig --region ap-south-1 --name enterprise-sre-cluster
-
-# Deploy unified namespaces, zero-trust network boundary rules, and core OTel architecture
-kubectl apply -k k8s-manifests/base
+# Terminal 1 (activate .venv first)
+cd src/payments-api
+uvicorn main:app --host 127.0.0.1 --port 8000
 ```
-
-### Phase 3: Workload Instrumentation & Validation
-
-Deploy application services to verify context propagation routing pipelines.
 
 ```bash
-# Package, lint, and roll out the core microservices architecture using Helm engine
-helm upgrade --install orders-api ./src/orders-api/chart --namespace default
-helm upgrade --install payments-api ./src/payments-api/chart --namespace default
+# Terminal 2
+cd src/orders-api
+PAYMENTS_URL=http://localhost:8000 go run .
 ```
-
----
-
-## 🔍 Validation, Verification & Runbook Execution
-
-### Scenario: Simulating Latency or Failure Incidents
-
-To verify system alerting pipelines function appropriately, trigger a failure response loop directly inside your microservice pods:
 
 ```bash
-# Port-forward the application endpoint directly to local testing environment
-kubectl port-forward svc/orders-api 8080:8080
-
-# Inject artificial high-volume error request load to force an SLO budget burn scenario
-for i in {1..500}; do curl -X POST http://localhost:8080/checkout -d '{"fail": true}'; done
+curl -X POST http://localhost:8080/checkout \
+  -H 'Content-Type: application/json' -d '{}'
+curl http://localhost:8080/metrics
+curl http://localhost:8000/metrics
 ```
 
-### Incident Triage Guide (Runbook Excerpt)
+Payment IDs are synthetic; these sample APIs do not charge money or persist orders. Set `SIMULATE_FAILURES=true` to enable controlled failures in a test process. Set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` when using a local collector. Collector unavailability does not prevent serving requests.
 
-When an automated burn rate alert triggers on your communications channel, execute these isolation steps:
+## Checks and deployment
 
-1. **Isolate Component:** Access Grafana to identify if the metric spike stems from cluster saturation or application code changes.
-2. **Correlate Spans:** Extract the specific `trace_id` indicating anomalous latency or error responses from the metric logs stream.
-3. **Inspect Root Cause:** Search the extracted `trace_id` within the Jaeger UI dashboard to trace the application request path across microservice boundaries and isolate the failing downstream transaction blockages.
+```bash
+make format-check
+make helm-lint
+make validate         # Includes both Terraform environments, no cloud credentials needed
+make build            # Requires Docker
+make scan             # Requires Trivy; fails on HIGH/CRITICAL vulnerabilities
+```
 
----
+See [`docs/deployment.md`](docs/deployment.md) for state bootstrap, OIDC, ECR imports, EKS authorization, private runners, manual workflows, and rollbacks. Cloud changes are executed explicitly through workflow dispatch, not as a side effect of merging documentation or dependency updates.
+
+| Workflow | Purpose |
+| --- | --- |
+| `quality.yml` | Go race tests/vet, Python HTTP tests/lint, Terraform validation, Helm/Kustomize validation, container builds/scans, actionlint |
+| `security-scan.yml` | PR, main, and nightly vulnerability scans; SARIF reporting where permitted |
+| `codeql.yml` | Go/Python static security analysis |
+| `apps-deploy.yml` | Validate main, publish immutable ECR images, deploy using a VPC-connected runner |
+| `infra-deploy.yml` | Validate, plan, optionally apply the exact plan for staging/prod |
+
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md), use the issue and pull request templates, and follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security reports should use [`SECURITY.md`](SECURITY.md). The architecture and outstanding integrations are documented in [`docs/system-design.md`](docs/system-design.md).
+
+Licensed under Apache 2.0: [`LICENSE`](LICENSE). `LICENSE.txt` is the existing third-party Terraform tooling license notice.
