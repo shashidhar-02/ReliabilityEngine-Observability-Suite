@@ -1,4 +1,7 @@
-replicaCount: 1
+replicaCount: 2
+otelEndpoint: "http://otel-collector.observability.svc.cluster.local:4317"
+paymentsURL: "http://payments-api.default.svc.cluster.local:8000"
+simulateFailures: false
 
 image:
   repository: orders-api
@@ -24,6 +27,8 @@ podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65532
   fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
   capabilities:

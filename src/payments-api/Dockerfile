@@ -14,6 +14,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY main.py .
 
 ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
 # Add a non-root user for security
 RUN useradd -m -u 1000 appuser && \
