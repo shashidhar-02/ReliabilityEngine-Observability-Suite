@@ -14,7 +14,7 @@ RUN apk upgrade --no-cache && apk add --no-cache libstdc++ ca-certificates && \
     python -m pip uninstall -y pip setuptools wheel && \
     adduser -D -u 1000 appuser
 COPY --from=builder /opt/venv /opt/venv
-COPY --chown=1000:1000 main.py .
+COPY main.py .
 ENV PATH="/opt/venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 USER 1000:1000
 EXPOSE 8000
