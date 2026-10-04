@@ -48,7 +48,7 @@ From the repository root:
 ```bash
 python3.11 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r src/payments-api/requirements-dev.txt
+python -m pip install --only-binary=:all: --require-hashes -r src/payments-api/requirements-dev.lock
 make test PYTHON=python
 make lint PYTHON=python
 ```

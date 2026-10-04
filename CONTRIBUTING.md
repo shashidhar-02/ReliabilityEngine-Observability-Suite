@@ -29,6 +29,7 @@ Go race tests require a C compiler and CGO. Terraform validation uses `init -bac
 - Format Go with gofmt and Terraform with `terraform fmt`; lint Python with the committed flake8 configuration.
 - Use bounded request and telemetry timeouts. Avoid unbounded metrics labels and global mutable test state.
 - Commit dependency manifests and lock/checksum files, not downloaded libraries or executables.
+- Regenerate Python hash locks with `uv pip compile --python-version 3.11 --generate-hashes --only-binary :all: requirements.txt -o requirements.lock` and the equivalent `requirements-dev.txt` command in `src/payments-api/`. CI and containers install the locks with hashes enforced.
 - Never commit AWS credentials, state, kubeconfig, plan files, or `.env` files.
 - Pin third-party Actions to reviewed commit SHAs. Let Dependabot propose upgrades.
 - Every operational alert needs a runbook; significant architecture changes need an ADR.

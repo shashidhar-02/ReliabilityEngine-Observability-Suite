@@ -10,7 +10,7 @@ help:
 	@echo "Deployment: deploy-base, deploy-apps (ECR_REGISTRY and IMAGE_TAG required)"
 
 setup:
-	$(PYTHON) -m pip install -r src/payments-api/requirements-dev.txt
+	$(PYTHON) -m pip install --only-binary=:all: --require-hashes -r src/payments-api/requirements-dev.lock
 
 init:
 	terraform -chdir=terraform/env/$(ENV) init

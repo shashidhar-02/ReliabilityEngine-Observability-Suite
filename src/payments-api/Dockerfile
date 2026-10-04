@@ -1,26 +1,21 @@
-FROM python:3.11-slim AS builder
+FROM python:3.11-alpine AS builder
 
 WORKDIR /app
 RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+COPY requirements.lock .
+RUN /opt/venv/bin/python -m pip install --no-cache-dir --only-binary=:all: \
+    --require-hashes -r requirements.lock && \
+    /opt/venv/bin/python -m pip uninstall -y pip setuptools wheel
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-FROM python:3.11-slim
+FROM python:3.11-alpine
 
 WORKDIR /app
+RUN apk upgrade --no-cache && apk add --no-cache libstdc++ ca-certificates && \
+    python -m pip uninstall -y pip setuptools wheel && \
+    adduser -D -u 1000 appuser
 COPY --from=builder /opt/venv /opt/venv
-COPY main.py .
-
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-
-# Add a non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
+COPY --chown=1000:1000 main.py .
+ENV PATH="/opt/venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+USER 1000:1000
 EXPOSE 8000
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

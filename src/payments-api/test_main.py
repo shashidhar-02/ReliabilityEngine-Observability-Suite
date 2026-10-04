@@ -16,8 +16,7 @@ def test_http_payment_and_metrics():
 
 
 def test_simulation_is_opt_in(monkeypatch):
-    monkeypatch.setattr("main.random.random", lambda: 0)
-    monkeypatch.setattr("main.random.uniform", lambda *_: 0)
+    monkeypatch.setattr("main.secrets.randbelow", lambda *_: 0)
     with TestClient(create_app(enable_tracing=False, simulate_failures=False)) as client:
         assert client.post("/process-payment").status_code == 200
     with TestClient(create_app(enable_tracing=False, simulate_failures=True)) as client:

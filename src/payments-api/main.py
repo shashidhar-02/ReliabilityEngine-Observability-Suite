@@ -3,7 +3,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import os
-import random
+import secrets
 import time
 import uuid
 
@@ -67,12 +67,12 @@ def create_app(*, enable_tracing=True, simulate_failures=None):
             requests.labels(method, path, str(status)).inc()
             duration.labels(method, path).observe(time.perf_counter() - started)
 
-    @app.post("/process-payment")
+    @app.post("/process-payment", responses={500: {"description": "Simulated payment failure"}})
     async def process_payment():
         with tracer.start_as_current_span("process_payment") as span:
             if simulate:
-                await asyncio.sleep(random.uniform(0.05, 0.2))
-                if random.random() < 0.05:
+                await asyncio.sleep((50 + secrets.randbelow(151)) / 1000)
+                if secrets.randbelow(100) < 5:
                     message = "simulated payment failure"
                     span.set_status(Status(StatusCode.ERROR, message))
                     raise HTTPException(status_code=500, detail=message)

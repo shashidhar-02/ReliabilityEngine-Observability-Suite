@@ -64,7 +64,7 @@ func (a application) checkoutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid JSON request", http.StatusBadRequest)
 		return
 	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
+	if decoder.Decode(new(any)) != io.EOF {
 		http.Error(w, "expected a single JSON object", http.StatusBadRequest)
 		return
 	}
