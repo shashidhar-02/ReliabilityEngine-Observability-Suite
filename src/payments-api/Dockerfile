@@ -1,4 +1,4 @@
-FROM python:3.11-alpine AS builder
+FROM python:3.14-alpine AS builder
 
 WORKDIR /app
 RUN python -m venv /opt/venv
@@ -7,7 +7,7 @@ RUN /opt/venv/bin/python -m pip install --no-cache-dir --only-binary=:all: \
     --require-hashes -r requirements.lock && \
     /opt/venv/bin/python -m pip uninstall -y pip setuptools wheel
 
-FROM python:3.11-alpine
+FROM python:3.14-alpine
 
 WORKDIR /app
 RUN apk upgrade --no-cache && apk add --no-cache libstdc++ ca-certificates && \
